@@ -1,131 +1,95 @@
-import './App.css'
-import { useEffect, useState } from 'react'
-import { supabase } from './supabaseClient'
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import Tareas from './pages/Tareas'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import Post from './pages/post'
 
 function App() {
-  const [tasks, setTasks] = useState([])
-  const [showForm, setShowForm] = useState(false)
-  const [newTaskName, setNewTaskName] = useState('')
+  // Inicializa isAuthenticated leyendo localStorage
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('isAuthenticated') === 'true'
+  })
 
+  // Guarda el estado de autenticación en localStorage cada vez que cambia
   useEffect(() => {
-    fetchData()
-  }, [])
+    localStorage.setItem('isAuthenticated', isAuthenticated)
+  }, [isAuthenticated])
 
-  const fetchData = async () => {
-    const { data, error } = await supabase.from('mein').select('*')
-    if (error) {
-      console.error('Error fetching data:', error)
-    } else {
-      setTasks(data)
-    }
-  }
+  // Para redirigir después del logout
+  const navigate = useNavigate()
 
-  const toggleDone = async (task) => {
-    const { error } = await supabase
-      .from('mein')
-      .update({ done: !task.done })
-      .eq('id', task.id)
-
-    if (error) {
-      console.error('Error updating task:', error)
-    } else {
-      setTasks(tasks.map(t => t.id === task.id ? { ...t, done: !t.done } : t))
-    }
-  }
-
-  const deleteTask = async (taskId) => {
-    const { error } = await supabase
-      .from('mein')
-      .delete()
-      .eq('id', taskId)
-
-    if (error) {
-      console.error('Error deleting task:', error)
-    } else {
-      setTasks(tasks.filter(t => t.id !== taskId))
-    }
-  }
-
-  const addTask = async () => {
-    if (!newTaskName.trim()) return
-
-    const { data, error } = await supabase
-      .from('mein')
-      .insert([{ name: newTaskName, done: false }])
-      .select()
-
-    if (error) {
-      console.error('Error adding task:', error)
-    } else {
-      setTasks([...tasks, ...data])
-      setNewTaskName('')
-      setShowForm(false)
-    }
+  const handleLogout = () => {
+    setIsAuthenticated(false)
+    localStorage.removeItem('isAuthenticated')
+    navigate('/')  // Redirige a inicio
   }
 
   return (
-    <div>
-      <h1>Lista de tareas</h1>
+    <>
+      <nav>
+        <Link to="/">Inicio</Link> |{' '}
+        {isAuthenticated ? (
+          <>
+            <button
+              onClick={handleLogout}
+              style={{ background: 'none', border: 'none', color: 'blue', cursor: 'pointer' }}
+            >
+              Cerrar sesión
+            </button>
+          </>
+        ) : (
+          <>
+            <Link to="/login">Login</Link> | <Link to="/register">Register</Link>
+          </>
+        )}
+      </nav>
 
-      <button onClick={() => setShowForm(!showForm)}>
-        {showForm ? 'Cancelar' : '➕ Nueva tarea'}
-      </button>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <>
+              <h1>Bienvenido a mi sitio</h1>
+              {/* Mostrar enlace a tareas solo si está autenticado */}
+              {isAuthenticated && (
+                <nav
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                    gap: '10px',
+                    marginTop: '10px',
+                  }}
+                >
+                  <Link to="/tareas" style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', textAlign: 'center' }}>
+                    Ir a Tareas
+                  </Link>
+                  <Link to="/post" style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', textAlign: 'center' }}>
+                    Ir a post
+                  </Link>
+                </nav>
+              )}
+            </>
+          }
+        />
+        <Route path="/tareas" element={<Tareas />} />
+        <Route path="/post" element={<Post />} />
 
-      {showForm && (
-        <div style={{ marginTop: '1rem' }}>
-          <input
-            type="text"
-            placeholder="Nombre de la tarea"
-            value={newTaskName}
-            onChange={(e) => setNewTaskName(e.target.value)}
-          />
-          <button onClick={addTask}>Crear</button>
-        </div>
-      )}
-
-      <table>
-        <thead>
-          <tr>
-            <th>Estado</th>
-            <th>Nombre</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {tasks.length === 0 ? (
-            <tr>
-              <td colSpan="3">No hay tareas</td>
-            </tr>
-          ) : (
-            tasks.map(task => (
-              <tr key={task.id}>
-                <td>
-                  <button
-                    onClick={() => toggleDone(task)}
-                    className="icon-button"
-                    title="Marcar como hecho/no hecho"
-                  >
-                    {task.done ? '✔️' : '❌'}
-                  </button>
-                </td>
-                <td>{task.name}</td>
-                <td>
-                  <button
-                    onClick={() => deleteTask(task.id)}
-                    className="icon-button"
-                    title="Eliminar tarea"
-                  >
-                    🗑️
-                  </button>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-
-    </div>
+        <Route
+          path="/login"
+          element={<Login onLoginSuccess={() => setIsAuthenticated(true)} />}
+        />
+        <Route path="/register" element={<Register />} />
+      </Routes>
+    </>
   )
 }
 
-export default App
+export default function AppWrapper() {
+  // useNavigate solo funciona dentro del Router, por eso envolvemos App aquí
+  return (
+    <Router>
+      <App />
+    </Router>
+  )
+}
