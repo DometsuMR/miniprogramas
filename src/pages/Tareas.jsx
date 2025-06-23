@@ -1,4 +1,9 @@
 import '../App.css'
+import styles from './Tareas.module.css'
+
+import pushAll from './pushAll';
+import deleteItem from './deleteItem';
+
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 
@@ -19,7 +24,7 @@ function App() {
       setTasks(data)
     }
   }
-
+  //Canviar a echo o no echo
   const toggleDone = async (task) => {
     const { error } = await supabase
       .from('mein')
@@ -34,34 +39,23 @@ function App() {
   }
 
   const deleteTask = async (taskId) => {
-    const { error } = await supabase
-      .from('mein')
-      .delete()
-      .eq('id', taskId)
-
-    if (error) {
-      console.error('Error deleting task:', error)
-    } else {
-      setTasks(tasks.filter(t => t.id !== taskId))
-    }
+    await deleteItem(taskId, 'mein');
+    setTasks(tasks.filter(task => task.id !== taskId));
   }
+    //await pushAll({ name: newTaskName, done: false }, 'mein');
 
   const addTask = async () => {
-    if (!newTaskName.trim()) return
+    if (!newTaskName.trim()) return;
 
-    const { data, error } = await supabase
-      .from('mein')
-      .insert([{ name: newTaskName, done: false }])
-      .select()
+    const newTask = await pushAll({ name: newTaskName, done: false }, 'mein');
 
-    if (error) {
-      console.error('Error adding task:', error)
-    } else {
-      setTasks([...tasks, ...data])
-      setNewTaskName('')
-      setShowForm(false)
+    if (newTask) {
+      setTasks([...tasks, newTask]);
+      setNewTaskName('');
+      setShowForm(false);
     }
-  }
+  };
+
 
   return (
     <div>
@@ -78,8 +72,9 @@ function App() {
             placeholder="Nombre de la tarea"
             value={newTaskName}
             onChange={(e) => setNewTaskName(e.target.value)}
+            className={styles.input}
           />
-          <button onClick={addTask}>Crear</button>
+          <button onClick={addTask} className={styles.button}>Crear</button>
         </div>
       )}
 

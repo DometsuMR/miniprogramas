@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import Tareas from './pages/Tareas'
+import Comidas from './pages/Comidas'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Post from './pages/post'
@@ -67,6 +68,10 @@ function App() {
                   <Link to="/post" style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', textAlign: 'center' }}>
                     Ir a post
                   </Link>
+                  <Link to="/comidas" style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', textAlign: 'center' }}>
+                    Ir a Comidas
+                  </Link>
+                  
                 </nav>
               )}
             </>
@@ -74,7 +79,7 @@ function App() {
         />
         <Route path="/tareas" element={<Tareas />} />
         <Route path="/post" element={<Post />} />
-
+        <Route path="/comidas" element={<Comidas />} />
         <Route
           path="/login"
           element={<Login onLoginSuccess={() => setIsAuthenticated(true)} />}
