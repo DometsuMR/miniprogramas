@@ -66,7 +66,7 @@ function App() {
                     Ir a Tareas
                   </Link>
                   <Link to="/post" style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', textAlign: 'center' }}>
-                    Ir a post
+                    Ir a Comparacion de Supers
                   </Link>
                   <Link to="/comidas" style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', textAlign: 'center' }}>
                     Ir a Comidas

@@ -1,131 +1,187 @@
 import '../App.css'
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
+import pushAll from './pushAll'  // Importa la función pushAll
+import { SUPERMERCADOS } from './supermercados'  // Importa la constante de supermercados
+import deleteItem from './deleteItem'  // Importa la función deleteItem
 
-function App() {
-  const [tasks, setTasks] = useState([])
+function ComparadorSupermercados() {
+  const [productos, setProductos] = useState([])
+  const [productName, setProductName] = useState('')
+  const [newProduct, setNewProduct] = useState({
+    nombre: '',
+    precio: '',
+    calificacion: '',
+    supermercado: '',
+  })
   const [showForm, setShowForm] = useState(false)
-  const [newTaskName, setNewTaskName] = useState('')
 
   useEffect(() => {
-    fetchData()
+    fetchProductos()
   }, [])
 
-  const fetchData = async () => {
-    const { data, error } = await supabase.from('mein').select('*')
+  const fetchProductos = async () => {
+    const { data, error } = await supabase.from('productos').select('*')
     if (error) {
-      console.error('Error fetching data:', error)
+      console.error('Error fetching products:', error)
     } else {
-      setTasks(data)
+      setProductos(data)
     }
   }
 
-  const toggleDone = async (task) => {
-    const { error } = await supabase
-      .from('mein')
-      .update({ done: !task.done })
-      .eq('id', task.id)
+  const handleInputChange = (e) => {
+    const { name, value } = e.target
+    setNewProduct((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
 
-    if (error) {
-      console.error('Error updating task:', error)
+  const handleDelete = async (id) => {
+    const { success, message } = await deleteItem(id, 'productos');  // Usamos 'productos' como tipo
+
+    if (success) {
+      // Si la eliminación es exitosa, actualizamos el estado
+      setProductos(prevProductos => prevProductos.filter(producto => producto.id !== id));
     } else {
-      setTasks(tasks.map(t => t.id === task.id ? { ...t, done: !t.done } : t))
+      // Si hubo un error, mostramos el mensaje de error
+      alert(`Error: ${message}`);
     }
   }
 
-  const deleteTask = async (taskId) => {
-    const { error } = await supabase
-      .from('mein')
-      .delete()
-      .eq('id', taskId)
 
-    if (error) {
-      console.error('Error deleting task:', error)
-    } else {
-      setTasks(tasks.filter(t => t.id !== taskId))
+  const addProduct = async () => {
+    const { nombre, precio, calificacion, supermercado } = newProduct
+    if (!nombre || !precio || !calificacion || !supermercado) {
+      alert('Todos los campos son obligatorios')
+      return
     }
-  }
 
-  const addTask = async () => {
-    if (!newTaskName.trim()) return
+    const data = {
+      nombre,
+      precio: parseFloat(precio),
+      calificacion: parseFloat(calificacion),
+      supermercado,
+    }
 
-    const { data, error } = await supabase
-      .from('mein')
-      .insert([{ name: newTaskName, done: false }])
-      .select()
+    // Usamos pushAll para agregar el producto
+    const insertedProduct = await pushAll(data, 'productos')  // Asegúrate de pasar 'productos'
 
-    if (error) {
-      console.error('Error adding task:', error)
-    } else {
-      setTasks([...tasks, ...data])
-      setNewTaskName('')
+    if (insertedProduct) {
+      setProductos([...productos, insertedProduct])
+      setNewProduct({ nombre: '', precio: '', calificacion: '', supermercado: '' })
       setShowForm(false)
     }
   }
 
+  const filteredProducts = productName
+    ? productos.filter(producto =>
+        producto.nombre.toLowerCase().includes(productName.toLowerCase())
+      )
+    : productos
+
+  const groupedProducts = filteredProducts.reduce((acc, producto) => {
+    if (!acc[producto.nombre]) {
+      acc[producto.nombre] = []
+    }
+    acc[producto.nombre].push(producto)
+    return acc
+  }, {})
+
   return (
     <div>
-      <h1>Lista de tareas</h1>
+      <h1>Comparador de precios</h1>
+      
+      <input
+        type="text"
+        placeholder="Buscar producto"
+        value={productName}
+        onChange={(e) => setProductName(e.target.value)}
+      />
 
       <button onClick={() => setShowForm(!showForm)}>
-        {showForm ? 'Cancelar' : '➕ Nueva tarea'}
+        {showForm ? 'Cancelar' : '➕ Nuevo Producto'}
       </button>
 
       {showForm && (
         <div style={{ marginTop: '1rem' }}>
           <input
             type="text"
-            placeholder="Nombre de la tarea"
-            value={newTaskName}
-            onChange={(e) => setNewTaskName(e.target.value)}
+            placeholder="Nombre del producto"
+            name="nombre"
+            value={newProduct.nombre}
+            onChange={handleInputChange}
           />
-          <button onClick={addTask}>Crear</button>
+          <input
+            type="number"
+            placeholder="Precio"
+            name="precio"
+            value={newProduct.precio}
+            onChange={handleInputChange}
+          />
+          <input
+            type="number"
+            placeholder="Calificación"
+            name="calificacion"
+            value={newProduct.calificacion}
+            onChange={handleInputChange}
+          />
+          
+          {/* Dropdown de supermercados */}
+          <select
+            name="supermercado"
+            value={newProduct.supermercado}
+            onChange={handleInputChange}
+          >
+            <option value="">Selecciona un supermercado</option>
+            {SUPERMERCADOS.map((supermercado, index) => (
+              <option key={index} value={supermercado}>
+                {supermercado}
+              </option>
+            ))}
+          </select>
+
+          <button onClick={addProduct}>Crear Producto</button>
         </div>
       )}
 
-      <table>
-        <thead>
-          <tr>
-            <th>Estado</th>
-            <th>Nombre</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {tasks.length === 0 ? (
-            <tr>
-              <td colSpan="3">No hay tareas</td>
-            </tr>
-          ) : (
-            tasks.map(task => (
-              <tr key={task.id}>
-                <td>
-                  <button
-                    onClick={() => toggleDone(task)}
-                    className="icon-button"
-                    title="Marcar como hecho/no hecho"
-                  >
-                    {task.done ? '✔️' : '❌'}
-                  </button>
-                </td>
-                <td>{task.name}</td>
-                <td>
-                  <button
-                    onClick={() => deleteTask(task.id)}
-                    className="icon-button"
-                    title="Eliminar tarea"
-                  >
-                    🗑️
-                  </button>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-
+      <div>
+        {Object.keys(groupedProducts).length === 0 ? (
+          <p>No hay productos que coincidan</p>
+        ) : (
+          Object.keys(groupedProducts).map((nombreProducto) => (
+            <div key={nombreProducto}>
+              <h3>{nombreProducto}</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Supermercado</th>
+                    <th>Precio</th>
+                    <th>Calificación</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupedProducts[nombreProducto].map((producto) => (
+                    <tr key={producto.id}>
+                      <td>{producto.supermercado}</td>
+                      <td>{producto.precio} €</td>
+                      <td>{producto.calificacion}</td>
+                      <td>
+                        <button onClick={() => handleDelete(producto.id)}>
+                          🗑️ Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   )
 }
 
-export default App
+export default ComparadorSupermercados

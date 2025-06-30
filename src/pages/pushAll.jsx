@@ -10,6 +10,8 @@ async function pushAll(data, type) {
     table = 'videos';
   } else if (type === 'mein') {
     table = 'mein';
+  } else if (type === 'productos') {  // Agregar la opción de 'productos'
+    table = 'productos';
   } else {
     console.error('Tipo no válido');
     return null;
